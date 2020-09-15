@@ -1,0 +1,89 @@
+_RecordsetPtr    pRecordset;
+ char sSql[1024];
+ sprintf(sSql, "SELECT *FROM tab_sendres");
+ pRecordset.CreateInstance(__uuidof(Recordset));
+ pRecordset->Open(sSql, _variant_t((IDispatch*)pConnection), adOpenStatic, adLockOptimistic, adCmdText);
+ if (pRecordset->adoEOF)
+ {
+  return;
+ }
+ _variant_t pvList;
+ long lDataSize = pRecordset->GetFields()->GetItem("Img")->ActualSize;
+
+ if (lDataSize > 0)
+ {
+  _variant_t    varBLOB;
+  varBLOB = pRecordset->GetFields()->GetItem("Img")->GetChunk(lDataSize);
+  try
+  {
+   if (varBLOB.vt == (VT_ARRAY | VT_UI1))
+   {
+    unsigned char* pimg;
+    if (pimg = new unsigned char[lDataSize + 1])
+    {
+     unsigned char* pBuf = NULL;
+     SafeArrayAccessData(varBLOB.parray, (void**)&pBuf);
+     memcpy(pimg, pBuf, lDataSize);
+     SafeArrayUnaccessData(varBLOB.parray);    
+     drawUCarr(pimg, 960, 540);       
+    }
+   }
+  }
+  catch (_com_error &e)
+  {
+   AfxMessageBox("从数据库中读取jpg图像有错！");
+   return;
+  }
+
+ }
+
+int CShowCamDlg::drawUCarr(unsigned char* pData,int wid,int hei)
+{
+ // TODO: 在此处添加实现代码.
+ if (pData==NULL)
+  return 0;
+ cv::Mat imgTmp = cv::Mat(hei, wid, CV_8UC1, pData);
+ CRect rect;
+ GetDlgItem(IDC_SHOWDETRES)->GetClientRect(&rect);  // 获取控件大小
+ resize(imgTmp, imgTmp, cv::Size(rect.Width(), rect.Height()));//
+ switch (imgTmp.channels())
+ {
+ case 1:
+  cv::cvtColor(imgTmp, imgTmp, cv::COLOR_GRAY2BGRA); // GRAY单通道  
+  break;
+ case 3:
+  cv::cvtColor(imgTmp, imgTmp, cv::COLOR_BGR2BGRA);  // BGR三通道  
+  break;
+ default:  break;
+ }
+
+ int pixelBytes = imgTmp.channels() * (imgTmp.depth() + 1); // 计算一个像素多少个字节
+
+ BITMAPINFO bitInfo;
+ bitInfo.bmiHeader.biBitCount = 8 * pixelBytes;
+ bitInfo.bmiHeader.biWidth = imgTmp.cols;
+ bitInfo.bmiHeader.biHeight = -imgTmp.rows;
+ bitInfo.bmiHeader.biPlanes = 1;
+ bitInfo.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+ bitInfo.bmiHeader.biCompression = BI_RGB;
+ bitInfo.bmiHeader.biClrImportant = 0;
+ bitInfo.bmiHeader.biClrUsed = 0;
+ bitInfo.bmiHeader.biSizeImage = 0;
+ bitInfo.bmiHeader.biXPelsPerMeter = 0;
+ bitInfo.bmiHeader.biYPelsPerMeter = 0;
+
+ CDC* pDC = GetDlgItem(IDC_SHOWDETRES)->GetDC();
+ ::StretchDIBits(
+  pDC->GetSafeHdc(),
+  0, 0, rect.Width(), rect.Height(),
+  0, 0, rect.Width(), rect.Height(),
+  imgTmp.data,
+  &bitInfo,
+  DIB_RGB_COLORS,
+  SRCCOPY
+ );
+ ReleaseDC(pDC);
+
+ return 0;
+
+}

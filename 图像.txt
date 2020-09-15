@@ -1,0 +1,23 @@
+CImage  image;
+	int cx, cy;
+	CRect   rect;
+	//根据路径载入图片  	
+	CString strPicPath = L"D://Documents//Pictures//20180525190823_8fidW.jpeg";
+	image.Load(strPicPath);
+	//获取图片的宽 高
+	cx = image.GetWidth();
+	cy = image.GetHeight();
+
+	CWnd *pWnd = NULL;
+	pWnd = GetDlgItem(IDC_STATIC_PICTURE);//获取控件句柄
+								   //获取Picture Control控件的客户区
+	pWnd->GetClientRect(&rect);
+
+	CDC *pDc = NULL;
+	pDc = pWnd->GetDC();//获取picture control的DC  
+						//设置指定设备环境中的位图拉伸模式
+	int ModeOld = SetStretchBltMode(pDc->m_hDC, STRETCH_HALFTONE);
+	//从源矩形中复制一个位图到目标矩形，按目标设备设置的模式进行图像的拉伸或压缩
+	image.StretchBlt(pDc->m_hDC, rect, SRCCOPY);
+	SetStretchBltMode(pDc->m_hDC, ModeOld);
+	ReleaseDC(pDc);
